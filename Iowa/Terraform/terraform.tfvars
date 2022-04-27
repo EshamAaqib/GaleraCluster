@@ -1,0 +1,17 @@
+db_vm_names       = ["db-node-us-a", "db-node-us-b", "db-node-us-c"]
+subnetwork        = "us-subnet"
+zones             = ["us-central1-a", "us-central1-b", "us-central1-c"]
+network_name      = "wso2-project-network"
+app_name          = "wso2-project"
+db-ip             = ["10.1.0.20", "10.1.0.21", "10.1.0.22"]
+resource_group    = ["db-group-us-a", "db-group-us-b", "db-group-us-c"]
+machine_type      = "e2-small"
+region            = "us-central1"
+lb_subnet_cidr    = "10.7.0.0/16"
+lb_subnet_name    = "us-db-lb-subnet"
+lb_ip_name        = "usa-db-lb-ip"
+lb_ip             = "10.7.0.2"
+lb_name           = "usa-db-int-lb"
+lb_service_label  = "us-lb-db"
+backend_name      = "usa-db-int-lb"
+health_check_name = "us-db-hc"

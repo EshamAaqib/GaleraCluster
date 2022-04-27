@@ -1,0 +1,17 @@
+db_vm_names       = ["db-node-sg-a", "db-node-sg-b", "db-node-sg-c"]
+subnetwork        = "singapore-subnet"
+zones             = ["asia-southeast1-a", "asia-southeast1-b", "asia-southeast1-c"]
+network_name      = "wso2-project-network"
+app_name          = "wso2-project"
+db-ip             = ["10.2.0.20", "10.2.0.21", "10.2.0.22"]
+resource_group    = ["db-group-sg-a", "db-group-sg-b", "db-group-sg-c"]
+machine_type      = "e2-small"
+region            = "asia-southeast1"
+lb_subnet_cidr    = "10.8.0.0/16"
+lb_subnet_name    = "sg-db-lb-subnet"
+lb_ip_name        = "sg-db-lb-ip"
+lb_ip             = "10.8.0.2"
+lb_name           = "sg-db-int-lb"
+lb_service_label  = "sg-lb-db"
+backend_name      = "sg-db-int-lb"
+health_check_name = "sg-db-hc"

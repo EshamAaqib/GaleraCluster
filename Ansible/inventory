@@ -1,0 +1,7 @@
+[mysql_cluster]
+db-node-1-us ansible_host=10.1.0.20 ansible_port=22
+db-node-2-us ansible_host=10.1.0.21 ansible_port=22
+db-node-3-us ansible_host=10.1.0.22 ansible_port=22
+db-node-4-sg ansible_host=10.2.0.20 ansible_port=22
+db-node-5-sg ansible_host=10.2.0.21 ansible_port=22
+db-node-5-sg ansible_host=10.2.0.22 ansible_port=22

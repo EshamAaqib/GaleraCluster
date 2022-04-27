@@ -1,0 +1,151 @@
+---
+- hosts: mysql_cluster
+  become: true
+  become_method: sudo
+  vars:
+    mysql_cluster_name: db-cluster-us
+    mysql_root_password: "xsc^5am@3tiim"
+
+  tasks:
+
+# Setup galera cluster repositories
+
+   - name: Update and upgrade apt packages
+     apt:
+       upgrade: yes
+       update_cache: yes
+       cache_valid_time: 86400 #One day
+
+   - name: Install software-properties-common
+     apt:
+       name: software-properties-common
+       state: present
+
+   - name: import repository key
+     apt_key: keyserver=hkp://keyserver.ubuntu.com:80 id=0xF1656F24C74CD1D8
+
+   - name: add apt repository for Galera Cluster
+     apt_repository: repo='{{item}}'
+       state=present update_cache=yes
+     with_items:
+        - "deb [arch=amd64,arm64,ppc64el] http://mariadb.mirror.liquidtelecom.com/repo/10.4/ubuntu focal main"
+
+   - name: Update and upgrade apt packages
+     apt:
+       upgrade: yes
+       update_cache: yes
+       cache_valid_time: 86400 #One day
+
+
+# Install Mariadb and Galera Cluster packages
+
+   - name: install Galera Cluster packages
+     apt:
+      name: 
+        - mariadb-server
+        - mariadb-client
+        - rsync
+        - python3-mysqldb
+      state: present
+
+   - name: Disable mariadb systemd unit to prevent cluster from starting in wrong order
+     systemd: name=mariadb enabled=no
+     
+     
+ # Ansible mysql_secure_installation playbook
+ 
+   - name: delete anonymous MySQL server user for {{ ansible_hostname }}
+     action: mysql_user user="" host="{{ ansible_hostname }}" state="absent"
+     
+   - name: delete anonymous MySQL server user for localhost
+     action: mysql_user user="" state="absent"
+     
+   - name: remove the MySQL test database
+     action: mysql_db db=test state=absent
+       
+       
+    # 'localhost' needs to be the last item for idempotency, see
+    # http://ansible.cc/docs/modules.html#mysql-user   
+   - name: Change root user password on first run
+     mysql_user: login_user=root
+                 login_password='{{ mysql_root_password }}'
+                 name=root
+                 password='{{ mysql_root_password }}'
+                 priv=*.*:ALL,GRANT
+                 host={{ item }}
+     with_items:
+       - '%'
+       - 10.7.0.2
+       - "{{ ansible_hostname }}"
+       - 127.0.0.1
+       - ::1
+       - localhost  
+         
+     
+ 
+
+# Create Mysql Galera Cluster Configuration file
+
+   - name: Create Mariadb Galera Cluster Configuration file
+     template:
+       src: mysql-cluster-config.j2
+       dest: /etc/mysql/mariadb.conf.d/galera.cnf
+
+   - name: Stop slave mariadb nodes
+     systemd: state=stopped name=mariadb
+     when: "inventory_hostname != groups['mysql_cluster'][0]"
+     tags:
+        - stop_cluster
+
+   - name: Wait 20 seconds to safely shutdown all slave mariadb nodes
+     pause:
+      seconds: 20
+     tags:
+        - stop_cluster
+
+   - name: Stop Primary mariadb Node
+     systemd: state=stopped name=mariadb
+     when: inventory_hostname == groups['mysql_cluster'][0]
+     tags:
+        - stop_cluster
+
+   - name: Wait 10 seconds to safely shutdown mysql primary node
+     pause:
+      seconds: 10
+
+   - name: Bootstarping Primary mariadb Node
+     shell: /usr/bin/galera_new_cluster
+     when: inventory_hostname == groups['mysql_cluster'][0]
+     any_errors_fatal: true
+     tags:
+        - start_cluster
+
+   - name: Wait 10 seconds after bootstarping Primary Mysql Node
+     pause:
+      seconds: 10
+     tags:
+        - start_cluster
+
+   - name: Start slave mariadb nodes
+     systemd: state=started name=mariadb
+     when: "inventory_hostname != groups['mysql_cluster'][0]"
+     any_errors_fatal: true
+     tags:
+        - start_cluster
+
+
+# Set mysql root user password and only allow access to root user from loadbalancer IP and localhost
+
+   - name: Testing cluster status by connecting to load balancer
+     shell: mysql -h 10.7.0.2 -u root -p{{ mysql_root_password }} -e "SHOW STATUS LIKE 'wsrep_cluster_size'" | grep 'wsrep_cluster_size' | awk '{print $2}'
+     run_once: true
+     register: cluster_status
+
+
+   - name: Test status
+     debug: 
+         msg: 
+            - " Test connection successfull"
+            - " Total number of active mysql nodes in cluster: '{{ cluster_status.stdout }} '"
+            - " Setup Completed!" 
+     run_once: true 
